@@ -241,8 +241,12 @@
             window.speechSynthesis.speak(speech);
             statusDisplay.textContent = "Playing translation...";
         } else {
+            // const speech = new SpeechSynthesisUtterance(text);
+            // window.speechSynthesis.speak(speech);
             const speech = new SpeechSynthesisUtterance(text);
+            speech.lang = 'uk';  // Мова синтезу - українська
             window.speechSynthesis.speak(speech);
+
         }
     });
 
@@ -252,6 +256,11 @@
             recognition.stop();
         }
     });
+
+
+    // Text-to-Speech functionality
+    //const playTranslationBtn = document.getElementById('play-translation-btn'); const translatedText = document.getElementById('translatedText'); playTranslationBtn.addEventListener('click', () => { const speech = new SpeechSynthesisUtterance(translatedText.value); window.speechSynthesis.speak(speech); });
+    //const playTranslationBtn = document.getElementById('play-translation-btn'); const translatedText = document.getElementById('translatedText'); playTranslationBtn.addEventListener('click', () => { const speech = new SpeechSynthesisUtterance(translatedText.value); window.speechSynthesis.speak(speech); });
 </script>
 
 </body>
