@@ -5,7 +5,7 @@
     <meta name="viewport"
           content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>AI Translate</title>
+    <title>AI Translate with Azure</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -42,16 +42,69 @@
             font-style: italic;
             color: #666;
         }
+        .api-settings {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 20px;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+        }
+        .api-key-input {
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
 
-<!-- Starting prompt input -->
+<!-- Language selection -->
 <div>
     <div>
-        <label for="startingPrompt">Starting Prompt (e.g., "English, Ukrainian")</label>
+        <label for="sourceLanguage">Source Language:</label>
+        <select id="sourceLanguage">
+            <option value="en">English</option>
+            <option value="uk">Ukrainian</option>
+            <option value="es">Spanish</option>
+            <option value="fr">French</option>
+            <option value="de">German</option>
+            <option value="it">Italian</option>
+            <option value="ru">Russian</option>
+            <option value="ja">Japanese</option>
+            <option value="zh-Hans">Chinese (Simplified)</option>
+            <option value="pl">Polish</option>
+            <option value="tr">Turkish</option>
+            <option value="ar">Arabic</option>
+            <option value="nl">Dutch</option>
+            <option value="pt">Portuguese</option>
+            <option value="ko">Korean</option>
+            <option value="sv">Swedish</option>
+            <option value="hi">Hindi</option>
+            <option value="el">Greek</option>
+        </select>
     </div>
-    <textarea name="startingPrompt" id="startingPrompt" cols="40" rows="3" placeholder="Enter source and target languages"></textarea>
+
+    <div>
+        <label for="targetLanguage">Target Language:</label>
+        <select id="targetLanguage">
+            <option value="en">English</option>
+            <option value="uk">Ukrainian</option>
+            <option value="es">Spanish</option>
+            <option value="fr">French</option>
+            <option value="de">German</option>
+            <option value="it">Italian</option>
+            <option value="ru">Russian</option>
+            <option value="ja">Japanese</option>
+            <option value="zh-Hans">Chinese (Simplified)</option>
+            <option value="pl">Polish</option>
+            <option value="tr">Turkish</option>
+            <option value="ar">Arabic</option>
+            <option value="nl">Dutch</option>
+            <option value="pt">Portuguese</option>
+            <option value="ko">Korean</option>
+            <option value="sv">Swedish</option>
+            <option value="hi">Hindi</option>
+            <option value="el">Greek</option>
+        </select>
+    </div>
 </div>
 
 <!-- Voice Input -->
@@ -65,7 +118,7 @@
 <!-- AI Translation -->
 <div>
     <h2>Translation</h2>
-    <p>AI translates language A to language B based on the prompt</p>
+    <p>Azure Translator translates the source language to the target language based on your input</p>
     <textarea id="translatedText" rows="5" cols="40" placeholder="Translated text will appear here..."></textarea>
 </div>
 
@@ -77,38 +130,11 @@
 
 <!-- Scripts for voice input and text-to-speech -->
 <script>
-    // Voice input functionality (use Web Speech API)
     const startRecordBtn = document.getElementById('start-record-btn');
     const statusDisplay = document.getElementById('status');
     const transcriptDisplay = document.getElementById('transcript');
-
-    // Language code mapping (for common languages)
-    const languageCodeMap = {
-        'english': 'en',
-        'ukrainian': 'uk',
-        'spanish': 'es',
-        'french': 'fr',
-        'german': 'de',
-        'italian': 'it',
-        'russian': 'ru',
-        'japanese': 'ja',
-        'chinese': 'zh',
-        'polish': 'pl',
-        'turkish': 'tr',
-        'arabic': 'ar',
-        'dutch': 'nl',
-        'portuguese': 'pt',
-        'korean': 'ko',
-        'swedish': 'sv',
-        'hindi': 'hi',
-        'greek': 'el'
-    };
-
-    // Get language code from language name
-    function getLanguageCode(languageName) {
-        const lowercaseName = languageName.toLowerCase();
-        return languageCodeMap[lowercaseName] || lowercaseName;
-    }
+    const sourceLanguageSelect = document.getElementById('sourceLanguage');
+    const targetLanguageSelect = document.getElementById('targetLanguage');
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
@@ -116,16 +142,9 @@
 
     startRecordBtn.addEventListener('click', () => {
         if (!recognitionStarted) {
-            const prompt = document.getElementById('startingPrompt').value;
-            const languages = prompt.split(',').map(lang => lang.trim());
-
-            if (languages.length >= 1) {
-                // Set the source language for speech recognition if specified
-                const sourceLanguageCode = getLanguageCode(languages[0]);
-                recognition.lang = sourceLanguageCode;
-                console.log(`Setting recognition language to: ${sourceLanguageCode}`);
-            }
-
+            const sourceLanguageCode = sourceLanguageSelect.value;
+            recognition.lang = sourceLanguageCode;
+            console.log(`Setting recognition language to: ${sourceLanguageCode}`);
             recognition.start();
             recognitionStarted = true;
             statusDisplay.textContent = "Recording...";
@@ -138,8 +157,6 @@
         const transcript = event.results[0][0].transcript;
         transcriptDisplay.value = transcript;
         statusDisplay.textContent = "Speech captured!";
-
-        // Perform translation based on the entered languages
         translateText();
     };
 
@@ -155,73 +172,63 @@
         statusDisplay.textContent = `Error: ${event.error}`;
     };
 
-    // Function to perform actual translation
     const translateText = async () => {
-        const prompt = document.getElementById('startingPrompt').value;
         const transcript = document.getElementById('transcript').value;
         const translatedTextArea = document.getElementById('translatedText');
+        const azureKey = '4ufZlJWIvPmxmtzSoV0KylqgtODrktGEsL4hZmlNUvoA6kZsafRNJQQJ99BBACYeBjFXJ3w3AAAbACOG2YwF';
+        const azureRegion = 'eastus';
 
         if (!transcript.trim()) {
             console.log("No text to translate");
             return;
         }
 
-        // Extract the source and target languages from the starting prompt
-        const languages = prompt.split(',').map(lang => lang.trim());
+        const sourceLanguage = sourceLanguageSelect.value;
+        const targetLanguage = targetLanguageSelect.value;
 
-        if (languages.length !== 2) {
-            alert("Please enter both source and target languages separated by a comma.");
-            return;
-        }
-
-        const sourceLanguage = languages[0];
-        const targetLanguage = languages[1];
-
-        // Get ISO language codes
-        const sourceCode = getLanguageCode(sourceLanguage);
-        const targetCode = getLanguageCode(targetLanguage);
-
-        console.log(`Translating from ${sourceCode} to ${targetCode}`);
-        statusDisplay.textContent = "Translating...";
+        console.log(`Translating from ${sourceLanguage} to ${targetLanguage}`);
+        statusDisplay.textContent = "Translating with Azure...";
 
         try {
-            // Use a public API for translation - this is a client-side approach
-            // Note: For production, you should use a proper paid API with authentication
-            const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceCode}&tl=${targetCode}&dt=t&q=${encodeURIComponent(transcript)}`;
+            const endpoint = `https://api.cognitive.microsofttranslator.com/translate?api-version=3.0&from=${sourceLanguage}&to=${targetLanguage}`;
 
-            const response = await fetch(url);
-            const data = await response.json();
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Ocp-Apim-Subscription-Key': azureKey,
+                    'Ocp-Apim-Subscription-Region': azureRegion,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify([{ 'text': transcript }])
+            });
 
-            // The response format is a bit complex, extract the translation
-            let translatedText = '';
-            if (data && data[0]) {
-                for (let i = 0; i < data[0].length; i++) {
-                    if (data[0][i][0]) {
-                        translatedText += data[0][i][0];
-                    }
-                }
+            if (!response.ok) {
+                throw new Error(`Azure API error: ${response.status} ${response.statusText}`);
             }
 
-            console.log("Translation received:", translatedText);
-            translatedTextArea.value = translatedText;
-            statusDisplay.textContent = "Translation complete!";
+            const data = await response.json();
+
+            if (data && data.length > 0 && data[0].translations && data[0].translations.length > 0) {
+                const translatedText = data[0].translations[0].text;
+                translatedTextArea.value = translatedText;
+                statusDisplay.textContent = "Azure translation complete!";
+            } else {
+                throw new Error("Invalid response format from Azure");
+            }
         } catch (error) {
-            console.error("Translation error:", error);
-            translatedTextArea.value = "Error during translation. Please try again.";
+            console.error("Azure translation error:", error);
+            translatedTextArea.value = `Error during translation: ${error.message}. Please check your API key and try again.`;
             statusDisplay.textContent = "Translation failed.";
         }
     };
 
-    // Manual translation when transcript is typed
     document.getElementById('transcript').addEventListener('input', () => {
         if (document.getElementById('transcript').value.trim() !== '') {
-            // Wait a bit before translating to avoid too many requests while typing
             clearTimeout(window.translateTimeout);
             window.translateTimeout = setTimeout(translateText, 1000);
         }
     });
 
-    // Text-to-Speech functionality
     const playTranslationBtn = document.getElementById('play-translation-btn');
     const translatedText = document.getElementById('translatedText');
 
@@ -232,35 +239,18 @@
             return;
         }
 
-        const languages = document.getElementById('startingPrompt').value.split(',').map(lang => lang.trim());
-        if (languages.length >= 2) {
-            const targetLanguageCode = getLanguageCode(languages[1]);
-
-            const speech = new SpeechSynthesisUtterance(text);
-            speech.lang = targetLanguageCode;
-            window.speechSynthesis.speak(speech);
-            statusDisplay.textContent = "Playing translation...";
-        } else {
-            // const speech = new SpeechSynthesisUtterance(text);
-            // window.speechSynthesis.speak(speech);
-            const speech = new SpeechSynthesisUtterance(text);
-            speech.lang = 'uk';  // Мова синтезу - українська
-            window.speechSynthesis.speak(speech);
-
-        }
+        const targetLanguageCode = targetLanguageSelect.value;
+        const speech = new SpeechSynthesisUtterance(text);
+        speech.lang = targetLanguageCode;
+        window.speechSynthesis.speak(speech);
+        statusDisplay.textContent = "Playing translation...";
     });
 
-    // Make sure recognition is canceled when page unloads
     window.addEventListener('beforeunload', () => {
         if (recognitionStarted) {
             recognition.stop();
         }
     });
-
-
-    // Text-to-Speech functionality
-    //const playTranslationBtn = document.getElementById('play-translation-btn'); const translatedText = document.getElementById('translatedText'); playTranslationBtn.addEventListener('click', () => { const speech = new SpeechSynthesisUtterance(translatedText.value); window.speechSynthesis.speak(speech); });
-    //const playTranslationBtn = document.getElementById('play-translation-btn'); const translatedText = document.getElementById('translatedText'); playTranslationBtn.addEventListener('click', () => { const speech = new SpeechSynthesisUtterance(translatedText.value); window.speechSynthesis.speak(speech); });
 </script>
 
 </body>
